@@ -3,7 +3,8 @@
    - Cash flow month/year selectors; paydates computed from income.nextpay anchor
    - Biweekly = anchor + n * 14 days
    - Bills tab columns: Item | Amount | Day | Account | Owner | Actions
-   - Result tab: assigned bills now sum by owner (regardless of account) and ignore Paid checkbox
+   - Result tab: assigned bills sum by owner (regardless of account) and ignore Paid checkbox
+   - Export filename now uses machine local time in MMMDDYYYYHHMM (24-hour) format
    - Robust import/export (BOM stripping, legacy p1/p2 migration, normalization)
    - Safe startup (DOMContentLoaded) and localStorage persistence
 */
@@ -986,17 +987,27 @@ function renderResult() {
 
 /* ---------------------------
    Export / Import (robust)
+   - Export filename uses local machine time in MMMDDYYYYHHMM (24-hour) format
    --------------------------- */
 function exportData() {
+  const now = new Date();
+  const months = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+  const mon = months[now.getMonth()];
+  const day = String(now.getDate()).padStart(2, "0");
+  const year = now.getFullYear();
+  const hour = String(now.getHours()).padStart(2, "0");
+  const minute = String(now.getMinutes()).padStart(2, "0");
+  const filename = `${mon}${day}${year}${hour}${minute}.json`;
+
   const dataStr = JSON.stringify(state, null, 2);
   const blob = new Blob([dataStr], { type: "application/json" });
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
   a.href = url;
-  a.download = "budget-data.json";
+  a.download = filename;
   a.click();
   URL.revokeObjectURL(url);
-  showToast("Export started");
+  showToast(`Export started: ${filename}`);
 }
 
 function importData(file) {
