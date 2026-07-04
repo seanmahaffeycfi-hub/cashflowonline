@@ -1,8 +1,10 @@
 /* app.js - full file (copy-paste)
-   - All edit popups replaced with a single reusable modal dialog
-   - editIncome(id) and editBill(id) now open the modal with all fields in one form
-   - Modal supports validation, Cancel, and Save; updates state and calls save()
-   - Keeps month/year flow controls, biweekly anchor stepping, Reset Paid, import/export, and other features
+   - Unified modal dialog for edits
+   - Cash flow month/year selectors; paydates computed from income.nextpay anchor
+   - Biweekly = anchor + n * 14 days
+   - Bills tab columns: Item | Amount | Day | Account | Owner | Actions
+   - Result tab: assigned bills now sum by owner (regardless of account) and ignore Paid checkbox
+   - Robust import/export (BOM stripping, legacy p1/p2 migration, normalization)
    - Safe startup (DOMContentLoaded) and localStorage persistence
 */
 
@@ -696,7 +698,7 @@ function renderBills() {
           <td></td>
           <td>${escapeHtml(i.name)}</td>
           <td>
-            <button class="btn btn-secondary" onclick="openModal({ type: 'income', id: ${i.id}, data: ${JSON.stringify(i).replace(/</g,'\\u003c')} })">Edit</button>
+            <button class="btn btn-secondary" onclick="editIncome(${i.id})">Edit</button>
           </td>
         </tr>
       `;
@@ -946,6 +948,8 @@ function renderFlow() {
 
 /* ---------------------------
    Result tab
+   - Assigned bills now sum by owner (regardless of account)
+   - Paid checkbox does not affect assigned totals
    --------------------------- */
 function billsInRange(start, end) {
   return state.bills
@@ -953,15 +957,21 @@ function billsInRange(start, end) {
     .reduce((s, b) => s + b.amt, 0);
 }
 
+function assignedByOwner(ownerName) {
+  // Sum all bills assigned to ownerName regardless of account and regardless of paid status
+  return state.bills
+    .filter(b => (b.owner || "Shared") === ownerName)
+    .reduce((s, b) => s + (Number(b.amt) || 0), 0);
+}
+
 function renderResult() {
   const incomesMonthly = state.incomes.map(i => ({ name: i.name, monthlyNet: monthlyNetForIncome(i) }));
-  const assignedByAccount = (acc) => state.bills.filter(b => b.account === acc && !b.paid).reduce((s,b)=>s+b.amt,0);
 
   let html = "";
   incomesMonthly.forEach(im => {
+    const assigned = assignedByOwner(im.name); // sum by owner, ignore account and paid
     html += `<div class="metric"><div class="metric-label">${escapeHtml(im.name)} monthly net</div><div class="metric-value">${currency.format(im.monthlyNet)}</div></div>`;
-    const assigned = assignedByAccount("USAA");
-    html += `<div class="metric"><div class="metric-label">${escapeHtml(im.name)} assigned bills (USAA)</div><div class="metric-value">${currency.format(assigned)}</div></div>`;
+    html += `<div class="metric"><div class="metric-label">${escapeHtml(im.name)} assigned bills</div><div class="metric-value">${currency.format(assigned)}</div></div>`;
     html += `<div class="metric"><div class="metric-label">${escapeHtml(im.name)} remaining</div><div class="metric-value">${currency.format(im.monthlyNet - assigned)}</div></div>`;
   });
 
