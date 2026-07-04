@@ -7,7 +7,7 @@
    - Export filename now uses machine local time in MMMDDYYYYHHMM (24-hour) format
    - Robust import/export (BOM stripping, legacy p1/p2 migration, normalization)
    - Safe startup (DOMContentLoaded) and localStorage persistence
-*/
+fdfd*/
 
 /* ---------------------------
    Runtime state and constants
