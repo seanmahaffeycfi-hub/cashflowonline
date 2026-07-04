@@ -18,11 +18,117 @@ let state = {
   bills: [] // { id, name, amt, due, account, owner, paid }
 };
 
-const SUPABASE_URL = "https://vfbblmazuakngnisdnab.supabase.co";
-const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZmYmJsbWF6dWFrbmduaXNkbmFiIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODMxMjAxNzUsImV4cCI6MjA5ODY5NjE3NX0.jTokAfeVH-2SFj5vkWNMPGEafoUqqQZqYOaCmknjzho";
 const ACCOUNTS = ["USAA", "USAA Saving", "Chase", "CapOne"];
 const FREQUENCIES = ["weekly", "biweekly", "semimonthly", "monthly"];
 const currency = new Intl.NumberFormat(undefined, { style: "currency", currency: "USD", maximumFractionDigits: 2 });
+
+/* ---------------------------
+   Supabase cloud sync
+   - Fill in SUPABASE_URL and SUPABASE_ANON_KEY from your project's
+     Settings -> API page.
+   - HOUSEHOLD_ID is just the row key in the budget_state table; leave
+     it as "household" unless you want a private/harder-to-guess id.
+   --------------------------- */
+const SUPABASE_URL = "https://vfbblmazuakngnisdnab.supabase.co";
+const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZmYmJsbWF6dWFrbmduaXNkbmFiIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODMxMjAxNzUsImV4cCI6MjA5ODY5NjE3NX0.jTokAfeVH-2SFj5vkWNMPGEafoUqqQZqYOaCmknjzho";
+const HOUSEHOLD_ID = "household";
+
+let supabaseClient = null;
+if (window.supabase && SUPABASE_URL.indexOf("YOUR-PROJECT") === -1) {
+  supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+}
+
+let cloudSaveTimer = null;
+let applyingRemoteUpdate = false; // guard so remote updates don't immediately re-save
+let lastPushedAt = 0; // used to ignore our own realtime echo
+
+async function pushStateToCloud() {
+  if (!supabaseClient || applyingRemoteUpdate) return;
+  clearTimeout(cloudSaveTimer);
+  cloudSaveTimer = setTimeout(async () => {
+    try {
+      const now = new Date().toISOString();
+      lastPushedAt = Date.now();
+      const { error } = await supabaseClient
+        .from("budget_state")
+        .upsert({ id: HOUSEHOLD_ID, data: state, updated_at: now });
+      if (error) {
+        console.warn("Cloud save failed:", error.message);
+        showToast("Cloud sync failed (saved locally only)", true);
+      }
+    } catch (e) {
+      console.warn("Cloud save error:", e);
+    }
+  }, 600); // debounce rapid edits into one write
+}
+
+async function pullStateFromCloud() {
+  if (!supabaseClient) return false;
+  try {
+    const { data, error } = await supabaseClient
+      .from("budget_state")
+      .select("data, updated_at")
+      .eq("id", HOUSEHOLD_ID)
+      .single();
+    if (error) {
+      console.warn("Cloud load failed:", error.message);
+      return false;
+    }
+    if (data && data.data && Object.keys(data.data).length > 0) {
+      applyingRemoteUpdate = true;
+      state = Object.assign({}, state, data.data);
+      if (!Array.isArray(state.incomes)) state.incomes = [];
+      if (!Array.isArray(state.bills)) state.bills = [];
+      try { localStorage.setItem("hb-state5", JSON.stringify(state)); } catch (e) {}
+      applyState();
+      renderIncomes();
+      renderBillAccountOptions();
+      renderBillOwnerOptions();
+      renderIncomeSummary();
+      renderBills();
+      renderFlow();
+      renderResult();
+      applyingRemoteUpdate = false;
+      return true;
+    }
+    return false;
+  } catch (e) {
+    console.warn("Cloud load error:", e);
+    return false;
+  }
+}
+
+function subscribeToCloudUpdates() {
+  if (!supabaseClient) return;
+  supabaseClient
+    .channel("budget_state_changes")
+    .on(
+      "postgres_changes",
+      { event: "UPDATE", schema: "public", table: "budget_state", filter: `id=eq.${HOUSEHOLD_ID}` },
+      (payload) => {
+        // Ignore the echo of our own recent write
+        if (Date.now() - lastPushedAt < 1500) return;
+        const incoming = payload.new && payload.new.data;
+        if (!incoming) return;
+        applyingRemoteUpdate = true;
+        state = Object.assign({}, state, incoming);
+        if (!Array.isArray(state.incomes)) state.incomes = [];
+        if (!Array.isArray(state.bills)) state.bills = [];
+        try { localStorage.setItem("hb-state5", JSON.stringify(state)); } catch (e) {}
+        applyState();
+        renderIncomes();
+        renderBillAccountOptions();
+        renderBillOwnerOptions();
+        renderIncomeSummary();
+        renderBills();
+        renderFlow();
+        renderResult();
+        applyingRemoteUpdate = false;
+        showToast("Updated from other device");
+      }
+    )
+    .subscribe();
+}
 
 /* Flow month/year selection (0-based month) */
 let flowSelectedYear = (new Date()).getFullYear();
@@ -101,6 +207,7 @@ function save() {
   renderBills();
   renderFlow();
   renderResult();
+  pushStateToCloud();
 }
 
 function load() {
@@ -126,6 +233,12 @@ function load() {
   renderFlow();
   renderResult();
   ensureResetPaidButton();
+
+  // After showing whatever we have locally, check the cloud for anything
+  // newer (e.g. changes made from the other person's phone) and subscribe
+  // to live updates going forward.
+  pullStateFromCloud();
+  subscribeToCloudUpdates();
 }
 
 /* ---------------------------
