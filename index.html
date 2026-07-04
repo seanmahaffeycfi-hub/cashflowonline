@@ -1,0 +1,166 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Household Budget v5</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div class="app" role="application" aria-labelledby="app-title">
+    <h1 id="app-title" style="display:none">Household Budget</h1>
+
+    <!-- TABS -->
+    <div class="tabs" role="tablist" aria-label="Main tabs">
+      <button class="tab active" data-tab="income" role="tab" aria-selected="true" aria-controls="tab-income" onclick="showTab('income')">Income</button>
+      <button class="tab" data-tab="bills" role="tab" aria-selected="false" aria-controls="tab-bills" onclick="showTab('bills')">Bills</button>
+      <button class="tab" data-tab="flow" role="tab" aria-selected="false" aria-controls="tab-flow" onclick="showTab('flow')">Cash Flow</button>
+      <button class="tab" data-tab="result" role="tab" aria-selected="false" aria-controls="tab-result" onclick="showTab('result')">Result</button>
+    </div>
+
+    <!-- INCOME TAB -->
+    <div id="tab-income" class="tab-panel" role="tabpanel" aria-labelledby="income-tab">
+      <div class="section" aria-labelledby="starting-balance-label">
+        <div class="section-title" id="starting-balance-label">Starting Balance</div>
+        <div class="row">
+          <label for="baseline-val" class="sr-only">Starting balance</label>
+          <input id="baseline-val" type="number" inputmode="decimal" placeholder="0.00" oninput="save()" aria-label="Starting balance">
+        </div>
+      </div>
+
+      <!-- Dynamic incomes list -->
+      <div class="section" aria-labelledby="incomes-title">
+        <div class="section-title" id="incomes-title">Incomes</div>
+
+        <!-- Add income form (deposit account removed) -->
+        <div class="row" style="align-items:center;">
+          <label for="income-name" class="sr-only">Income name</label>
+          <input id="income-name" placeholder="Name (e.g., Alice, Side gig)" aria-label="Income name">
+
+          <label for="income-amt" class="sr-only">Amount per check</label>
+          <input id="income-amt" type="number" inputmode="decimal" placeholder="Net pay / check" aria-label="Amount per check">
+
+          <label for="income-freq" class="sr-only">Pay frequency</label>
+          <select id="income-freq" aria-label="Pay frequency">
+            <option value="biweekly">Bi-weekly</option>
+            <option value="weekly">Weekly</option>
+            <option value="semimonthly">Semi-monthly</option>
+            <option value="monthly">Monthly</option>
+          </select>
+
+          <label for="income-nextpay" class="sr-only">Next pay date</label>
+          <input id="income-nextpay" type="date" aria-label="Next pay date">
+
+          <label for="income-tax" class="sr-only">Tax reserve percent</label>
+          <input id="income-tax" type="number" inputmode="decimal" placeholder="Tax reserve %" aria-label="Tax reserve percent">
+
+          <button class="btn btn-primary" type="button" onclick="addIncome()">+ Add income</button>
+        </div>
+
+        <!-- Incomes ledger (no account column) -->
+        <div style="margin-top:12px">
+          <table>
+            <thead>
+              <tr><th>Name</th><th>Amount</th><th>Freq</th><th>Next pay</th><th>Tax %</th><th></th></tr>
+            </thead>
+            <tbody id="incomes-body" aria-live="polite"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="metric-grid" id="income-summary" aria-live="polite"></div>
+    </div>
+
+    <!-- BILLS TAB -->
+<div id="tab-bills" class="tab-panel" style="display:none" role="tabpanel" aria-labelledby="bills-tab">
+  <div class="section" aria-labelledby="add-bill-label">
+    <div class="section-title" id="add-bill-label">Add Bill</div>
+    <div class="row">
+      <label for="b-name" class="sr-only">Bill name</label>
+      <input id="b-name" placeholder="Bill name" aria-label="Bill name">
+
+      <label for="b-amt" class="sr-only">Bill amount</label>
+      <input id="b-amt" type="number" inputmode="decimal" placeholder="Amount" aria-label="Bill amount">
+
+      <label for="b-due" class="sr-only">Day due</label>
+      <input id="b-due" type="number" inputmode="numeric" min="1" max="31" placeholder="Day due (1-31)" aria-label="Day due">
+
+      <label for="b-account" class="sr-only">Account</label>
+      <select id="b-account" aria-label="Bill account">
+        <option value="USAA">USAA</option>
+        <option value="Chase">Chase</option>
+        <option value="CapOne">Cap One</option>
+        <option value="Cash">Cash</option>
+      </select>
+
+      <label for="b-owner" class="sr-only">Bill owner</label>
+      <select id="b-owner" aria-label="Bill owner">
+        <!-- options populated by app.js: "Shared" + current income names -->
+      </select>
+
+      <button class="btn btn-primary" type="button" onclick="addBill()">+ Add bill</button>
+    </div>
+  </div>
+
+  <div class="section" aria-labelledby="bill-ledger-label">
+    <div class="section-title" id="bill-ledger-label">Bill Ledger</div>
+    <table>
+      <thead>
+        <tr>
+          <th>Bill / Income</th>
+          <th>In</th>
+          <th>Out</th>
+          <th>Due / Next pay</th>
+          <th>Account</th>
+          <th>Owner</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody id="bills-body" aria-live="polite"></tbody>
+    </table>
+  </div>
+</div>
+
+    <!-- CASH FLOW TAB -->
+    <div id="tab-flow" class="tab-panel" style="display:none" role="tabpanel" aria-labelledby="flow-tab">
+      <div class="metric-grid" id="flow-summary" aria-live="polite"></div>
+
+      <div class="section" aria-labelledby="daily-ledger-label">
+        <div class="section-title" id="daily-ledger-label">Daily Ledger</div>
+        <table>
+          <thead>
+            <tr>
+              <th>Day</th>
+              <th>Date</th>
+              <th>Event</th>
+              <th>In / Out</th>
+              <th>USAA running total</th>
+              <th>Chase running total</th>
+            </tr>
+          </thead>
+          <tbody id="flow-body" aria-live="polite"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- RESULT TAB -->
+    <div id="tab-result" class="tab-panel" style="display:none" role="tabpanel" aria-labelledby="result-tab">
+      <div class="metric-grid" id="result-summary" aria-live="polite"></div>
+    </div>
+
+    <!-- DATA MANAGEMENT -->
+    <div class="section" aria-labelledby="data-management-label">
+      <div class="section-title" id="data-management-label">Data Management</div>
+      <div class="row">
+        <button class="btn btn-primary" type="button" onclick="exportData()">Export Data</button>
+
+        <!-- Styled import button that looks like Export -->
+        <button id="import-btn" class="btn btn-primary" type="button" onclick="document.getElementById('import-file').click()">Import Data</button>
+        <input type="file" id="import-file" style="display:none" onchange="importData(this.files[0])" aria-label="Import data file">
+      </div>
+    </div>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>

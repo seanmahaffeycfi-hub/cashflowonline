@@ -1,0 +1,33 @@
+* { box-sizing: border-box; margin: 0; padding: 0 }
+body { font-family: system-ui, sans-serif; background: #f7f7f7; color: #222 }
+.app { padding: 16px }
+
+.tabs { display: flex; gap: 4px; border-bottom: 1px solid #ccc; margin-bottom: 20px }
+.tab { padding: 8px 14px; background: transparent; border: none; cursor: pointer; font-size: 15px; color: #666 }
+.tab.active { color: #0a5; border-bottom: 2px solid #0a5 }
+
+.section { background: #fff; border: 1px solid #ddd; border-radius: 10px; padding: 16px; margin-bottom: 16px }
+.section-title { font-size: 15px; font-weight: 600; color: #555; margin-bottom: 12px; text-transform: uppercase }
+
+.row { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 8px }
+input, select { height: 34px; padding: 0 8px; border: 1px solid #ccc; border-radius: 6px; font-size: 15px }
+
+.btn { height: 34px; padding: 0 12px; border-radius: 6px; cursor: pointer; font-size: 15px; border: 1px solid #888; background: #eee }
+.btn-primary { background: #0a5; color: #fff; border-color: #0a5 }
+.btn-danger { background: #c33; color: #fff; border-color: #c33 }
+
+.metric-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 10px }
+.metric { background: #fafafa; border-radius: 6px; padding: 12px }
+.metric-label { font-size: 13px; color: #777 }
+.metric-value { font-size: 21px; font-weight: 600 }
+
+table { width: 100%; border-collapse: collapse; font-size: 14px }
+th, td { padding: 6px 7px; border-bottom: 1px solid #ddd }
+th { text-align: left; color: #555; font-size: 13px }
+
+/* color amounts: in = green, out = red */
+.amt-in { color: #0a5; font-weight: 600; }
+.amt-out { color: #c33; font-weight: 600; }
+
+/* slightly narrower action button column */
+table td .btn { padding: 6px 8px; font-size: 13px; }
