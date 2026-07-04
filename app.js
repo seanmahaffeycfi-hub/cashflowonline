@@ -31,19 +31,136 @@ const currency = new Intl.NumberFormat(undefined, { style: "currency", currency:
    --------------------------- */
 const SUPABASE_URL = "https://vfbblmazuakngnisdnab.supabase.co";
 const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZmYmJsbWF6dWFrbmduaXNkbmFiIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODMxMjAxNzUsImV4cCI6MjA5ODY5NjE3NX0.jTokAfeVH-2SFj5vkWNMPGEafoUqqQZqYOaCmknjzho";
-const HOUSEHOLD_ID = "household";
 
 let supabaseClient = null;
 if (window.supabase && SUPABASE_URL.indexOf("YOUR-PROJECT") === -1) {
   supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 }
 
+let currentUser = null;
+let currentHouseholdId = null; // resolved after sign-in, from household_members
 let cloudSaveTimer = null;
 let applyingRemoteUpdate = false; // guard so remote updates don't immediately re-save
 let lastPushedAt = 0; // used to ignore our own realtime echo
 
+/* ---------------------------
+   Auth
+   --------------------------- */
+let authMode = "signin"; // "signin" or "signup"
+
+function toggleAuthMode() {
+  authMode = authMode === "signin" ? "signup" : "signin";
+  const title = document.getElementById("auth-title");
+  const submitBtn = document.getElementById("auth-submit-btn");
+  const toggleText = document.getElementById("auth-toggle-text");
+  const toggleLink = document.getElementById("auth-toggle-link");
+  const statusEl = document.getElementById("auth-status");
+
+  if (authMode === "signup") {
+    title.textContent = "Create account";
+    submitBtn.textContent = "Create account";
+    toggleText.textContent = "Already have an account?";
+    toggleLink.textContent = "Sign in";
+  } else {
+    title.textContent = "Sign in";
+    submitBtn.textContent = "Sign in";
+    toggleText.textContent = "Don't have an account?";
+    toggleLink.textContent = "Create one";
+  }
+  statusEl.textContent = "";
+}
+
+async function submitAuth() {
+  const statusEl = document.getElementById("auth-status");
+  const email = (document.getElementById("auth-email").value || "").trim();
+  const password = document.getElementById("auth-password").value || "";
+
+  if (!supabaseClient) {
+    statusEl.textContent = "Supabase isn't configured yet (check SUPABASE_URL/KEY in app.js).";
+    return;
+  }
+  if (!email || !password) {
+    statusEl.textContent = "Enter both email and password.";
+    return;
+  }
+  if (password.length < 6) {
+    statusEl.textContent = "Password must be at least 6 characters.";
+    return;
+  }
+
+  statusEl.textContent = authMode === "signup" ? "Creating account..." : "Signing in...";
+
+  if (authMode === "signup") {
+    const { error } = await supabaseClient.auth.signUp({ email, password });
+    statusEl.textContent = error ? ("Error: " + error.message) : "Account created! Check your email to confirm, then sign in.";
+  } else {
+    const { error } = await supabaseClient.auth.signInWithPassword({ email, password });
+    statusEl.textContent = error ? ("Error: " + error.message) : "";
+  }
+}
+
+function signOut() {
+  if (supabaseClient) supabaseClient.auth.signOut();
+}
+
+function showAuthGate() {
+  const gate = document.getElementById("auth-gate");
+  const app = document.querySelector(".app");
+  if (gate) gate.style.display = "flex";
+  if (app) app.style.display = "none";
+}
+
+async function handleSignedIn(user) {
+  currentUser = user;
+  const { data, error } = await supabaseClient
+    .from("household_members")
+    .select("household_id")
+    .eq("user_id", user.id)
+    .limit(1)
+    .maybeSingle();
+
+  const statusEl = document.getElementById("auth-status");
+  if (error || !data) {
+    if (statusEl) statusEl.textContent = "Signed in, but your account isn't linked to a household yet. Add your user ID to household_members in Supabase.";
+    return;
+  }
+
+  currentHouseholdId = data.household_id;
+  const gate = document.getElementById("auth-gate");
+  const app = document.querySelector(".app");
+  if (gate) gate.style.display = "none";
+  if (app) app.style.display = "block";
+
+  load();
+  subscribeToCloudUpdates();
+}
+
+async function initAuth() {
+  if (!supabaseClient) {
+    // No Supabase configured: fall back to local-only mode, skip the gate.
+    const gate = document.getElementById("auth-gate");
+    const app = document.querySelector(".app");
+    if (gate) gate.style.display = "none";
+    if (app) app.style.display = "block";
+    load();
+    return;
+  }
+
+  const { data: { session } } = await supabaseClient.auth.getSession();
+  if (session) {
+    await handleSignedIn(session.user);
+  } else {
+    showAuthGate();
+  }
+
+  supabaseClient.auth.onAuthStateChange((event, session) => {
+    if (session) handleSignedIn(session.user);
+    else showAuthGate();
+  });
+}
+
 async function pushStateToCloud() {
-  if (!supabaseClient || applyingRemoteUpdate) return;
+  if (!supabaseClient || !currentHouseholdId || applyingRemoteUpdate) return;
   clearTimeout(cloudSaveTimer);
   cloudSaveTimer = setTimeout(async () => {
     try {
@@ -51,7 +168,7 @@ async function pushStateToCloud() {
       lastPushedAt = Date.now();
       const { error } = await supabaseClient
         .from("budget_state")
-        .upsert({ id: HOUSEHOLD_ID, data: state, updated_at: now });
+        .upsert({ household_id: currentHouseholdId, data: state, updated_at: now });
       if (error) {
         console.warn("Cloud save failed:", error.message);
         showToast("Cloud sync failed (saved locally only)", true);
@@ -63,12 +180,12 @@ async function pushStateToCloud() {
 }
 
 async function pullStateFromCloud() {
-  if (!supabaseClient) return false;
+  if (!supabaseClient || !currentHouseholdId) return false;
   try {
     const { data, error } = await supabaseClient
       .from("budget_state")
       .select("data, updated_at")
-      .eq("id", HOUSEHOLD_ID)
+      .eq("household_id", currentHouseholdId)
       .single();
     if (error) {
       console.warn("Cloud load failed:", error.message);
@@ -99,12 +216,12 @@ async function pullStateFromCloud() {
 }
 
 function subscribeToCloudUpdates() {
-  if (!supabaseClient) return;
+  if (!supabaseClient || !currentHouseholdId) return;
   supabaseClient
     .channel("budget_state_changes")
     .on(
       "postgres_changes",
-      { event: "UPDATE", schema: "public", table: "budget_state", filter: `id=eq.${HOUSEHOLD_ID}` },
+      { event: "UPDATE", schema: "public", table: "budget_state", filter: `household_id=eq.${currentHouseholdId}` },
       (payload) => {
         // Ignore the echo of our own recent write
         if (Date.now() - lastPushedAt < 1500) return;
@@ -235,10 +352,9 @@ function load() {
   ensureResetPaidButton();
 
   // After showing whatever we have locally, check the cloud for anything
-  // newer (e.g. changes made from the other person's phone) and subscribe
-  // to live updates going forward.
+  // newer (e.g. changes made from the other person's phone). The realtime
+  // subscription for ongoing updates is set up separately in handleSignedIn().
   pullStateFromCloud();
-  subscribeToCloudUpdates();
 }
 
 /* ---------------------------
@@ -1238,8 +1354,8 @@ function importData(file) {
    --------------------------- */
 window.addEventListener("DOMContentLoaded", () => {
   try {
-    load();
+    initAuth();
   } catch (err) {
-    console.error("Initial load failed:", err);
+    console.error("Initial auth/load failed:", err);
   }
 });

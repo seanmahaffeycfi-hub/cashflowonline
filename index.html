@@ -7,7 +7,22 @@
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
-  <div class="app" role="application" aria-labelledby="app-title">
+  <!-- AUTH GATE -->
+  <div id="auth-gate" style="display:flex; min-height:100vh; align-items:center; justify-content:center; font-family: system-ui, sans-serif;">
+    <div style="background:#fff; border:1px solid #ddd; border-radius:10px; padding:24px; width:320px; max-width:90%;">
+      <h2 id="auth-title" style="margin-bottom:12px; font-size:18px;">Sign in</h2>
+      <input id="auth-email" type="email" placeholder="you@example.com" style="width:100%; height:36px; padding:0 8px; border:1px solid #ccc; border-radius:6px; margin-bottom:8px;">
+      <input id="auth-password" type="password" placeholder="Password" style="width:100%; height:36px; padding:0 8px; border:1px solid #ccc; border-radius:6px; margin-bottom:10px;">
+      <button id="auth-submit-btn" class="btn btn-primary" type="button" onclick="submitAuth()" style="width:100%; margin-bottom:8px;">Sign in</button>
+      <div style="text-align:center; font-size:13px;">
+        <span id="auth-toggle-text">Don't have an account?</span>
+        <a href="#" id="auth-toggle-link" onclick="toggleAuthMode(); return false;" style="color:#0a5;">Create one</a>
+      </div>
+      <div id="auth-status" style="margin-top:10px; font-size:13px; color:#555;"></div>
+    </div>
+  </div>
+
+  <div class="app" role="application" aria-labelledby="app-title" style="display:none">
     <h1 id="app-title" style="display:none">Household Budget</h1>
 
     <!-- TABS -->
@@ -157,6 +172,7 @@
         <!-- Styled import button that looks like Export -->
         <button id="import-btn" class="btn btn-primary" type="button" onclick="document.getElementById('import-file').click()">Import Data</button>
         <input type="file" id="import-file" style="display:none" onchange="importData(this.files[0])" aria-label="Import data file">
+        <button class="btn" type="button" onclick="signOut()">Sign out</button>
       </div>
 
     </div>
