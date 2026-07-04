@@ -7,7 +7,7 @@
    - Export filename now uses machine local time in MMMDDYYYYHHMM (24-hour) format
    - Robust import/export (BOM stripping, legacy p1/p2 migration, normalization)
    - Safe startup (DOMContentLoaded) and localStorage persistence
-fdfd*/
+*/
 
 /* ---------------------------
    Runtime state and constants
@@ -99,6 +99,39 @@ async function submitAuth() {
   }
 }
 
+async function sendPasswordReset() {
+  const statusEl = document.getElementById("auth-status");
+  const email = (document.getElementById("auth-email").value || "").trim();
+  if (!supabaseClient) {
+    statusEl.textContent = "Supabase isn't configured yet.";
+    return;
+  }
+  if (!email) {
+    statusEl.textContent = "Enter your email above first, then click Forgot password.";
+    return;
+  }
+  statusEl.textContent = "Sending reset link...";
+  const { error } = await supabaseClient.auth.resetPasswordForEmail(email);
+  statusEl.textContent = error ? ("Error: " + error.message) : "Check your email for a reset link.";
+}
+
+async function submitNewPassword() {
+  const statusEl = document.getElementById("reset-status");
+  const newPassword = document.getElementById("reset-password").value || "";
+  if (newPassword.length < 6) {
+    statusEl.textContent = "Password must be at least 6 characters.";
+    return;
+  }
+  statusEl.textContent = "Saving...";
+  const { error } = await supabaseClient.auth.updateUser({ password: newPassword });
+  if (error) {
+    statusEl.textContent = "Error: " + error.message;
+    return;
+  }
+  statusEl.textContent = "Password updated! Reloading...";
+  setTimeout(() => window.location.href = window.location.origin + window.location.pathname, 1000);
+}
+
 function signOut() {
   if (supabaseClient) supabaseClient.auth.signOut();
 }
@@ -154,6 +187,15 @@ async function initAuth() {
   }
 
   supabaseClient.auth.onAuthStateChange((event, session) => {
+    if (event === "PASSWORD_RECOVERY") {
+      const authGate = document.getElementById("auth-gate");
+      const resetGate = document.getElementById("reset-gate");
+      const app = document.querySelector(".app");
+      if (authGate) authGate.style.display = "none";
+      if (app) app.style.display = "none";
+      if (resetGate) resetGate.style.display = "flex";
+      return;
+    }
     if (session) handleSignedIn(session.user);
     else showAuthGate();
   });

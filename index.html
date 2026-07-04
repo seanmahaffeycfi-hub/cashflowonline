@@ -14,11 +14,24 @@
       <input id="auth-email" type="email" placeholder="you@example.com" style="width:100%; height:36px; padding:0 8px; border:1px solid #ccc; border-radius:6px; margin-bottom:8px;">
       <input id="auth-password" type="password" placeholder="Password" style="width:100%; height:36px; padding:0 8px; border:1px solid #ccc; border-radius:6px; margin-bottom:10px;">
       <button id="auth-submit-btn" class="btn btn-primary" type="button" onclick="submitAuth()" style="width:100%; margin-bottom:8px;">Sign in</button>
-      <div style="text-align:center; font-size:13px;">
+      <div style="text-align:center; font-size:13px; margin-bottom:6px;">
         <span id="auth-toggle-text">Don't have an account?</span>
         <a href="#" id="auth-toggle-link" onclick="toggleAuthMode(); return false;" style="color:#0a5;">Create one</a>
       </div>
+      <div id="auth-forgot-row" style="text-align:center; font-size:13px;">
+        <a href="#" onclick="sendPasswordReset(); return false;" style="color:#666;">Forgot password?</a>
+      </div>
       <div id="auth-status" style="margin-top:10px; font-size:13px; color:#555;"></div>
+    </div>
+  </div>
+
+  <!-- SET NEW PASSWORD (shown after clicking a reset link) -->
+  <div id="reset-gate" style="display:none; min-height:100vh; align-items:center; justify-content:center; font-family: system-ui, sans-serif;">
+    <div style="background:#fff; border:1px solid #ddd; border-radius:10px; padding:24px; width:320px; max-width:90%;">
+      <h2 style="margin-bottom:12px; font-size:18px;">Set a new password</h2>
+      <input id="reset-password" type="password" placeholder="New password" style="width:100%; height:36px; padding:0 8px; border:1px solid #ccc; border-radius:6px; margin-bottom:10px;">
+      <button class="btn btn-primary" type="button" onclick="submitNewPassword()" style="width:100%;">Save new password</button>
+      <div id="reset-status" style="margin-top:10px; font-size:13px; color:#555;"></div>
     </div>
   </div>
 
