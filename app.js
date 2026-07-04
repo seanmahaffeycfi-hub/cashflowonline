@@ -18,6 +18,8 @@ let state = {
   bills: [] // { id, name, amt, due, account, owner, paid }
 };
 
+const SUPABASE_URL = "https://vfbblmazuakngnisdnab.supabase.co";
+const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZmYmJsbWF6dWFrbmduaXNkbmFiIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODMxMjAxNzUsImV4cCI6MjA5ODY5NjE3NX0.jTokAfeVH-2SFj5vkWNMPGEafoUqqQZqYOaCmknjzho";
 const ACCOUNTS = ["USAA", "USAA Saving", "Chase", "CapOne"];
 const FREQUENCIES = ["weekly", "biweekly", "semimonthly", "monthly"];
 const currency = new Intl.NumberFormat(undefined, { style: "currency", currency: "USD", maximumFractionDigits: 2 });

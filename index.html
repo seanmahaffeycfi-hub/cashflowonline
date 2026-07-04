@@ -158,9 +158,11 @@
         <button id="import-btn" class="btn btn-primary" type="button" onclick="document.getElementById('import-file').click()">Import Data</button>
         <input type="file" id="import-file" style="display:none" onchange="importData(this.files[0])" aria-label="Import data file">
       </div>
+
     </div>
   </div>
 
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="app.js"></script>
 </body>
 </html>
