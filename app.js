@@ -810,8 +810,29 @@ function renderBillOwnerOptions() {
    Bills: add / delete / edit / toggle paid
    --------------------------- */
 function addBill() {
-  // open modal for new bill
-  openModal({ type: "bill", id: null, data: { name: "", amt: 0, due: 1, account: ACCOUNTS[0], owner: "Shared" } });
+  const name = (document.getElementById("b-name").value || "").trim();
+  const amt = parseFloat(document.getElementById("b-amt").value) || 0;
+  const due = parseInt(document.getElementById("b-due").value) || 1;
+  const account = document.getElementById("b-account").value || ACCOUNTS[0];
+  const owner = document.getElementById("b-owner").value || "Shared";
+
+  if (!name || amt <= 0) {
+    showToast("Please provide a name and a positive amount", true);
+    return;
+  }
+  if (isNaN(due) || due < 1 || due > 31) {
+    showToast("Due day must be between 1 and 31", true);
+    return;
+  }
+
+  state.bills.push({ id: Date.now(), name, amt, due, account, owner, paid: false });
+
+  document.getElementById("b-name").value = "";
+  document.getElementById("b-amt").value = "";
+  document.getElementById("b-due").value = "";
+
+  save();
+  showToast("Bill added");
 }
 
 function deleteBill(id) {
