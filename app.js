@@ -13,7 +13,6 @@
    Runtime state and constants
    --------------------------- */
 let state = {
-  baseline: 0,
   incomes: [],
   bills: [] // { id, name, amt, due, account, owner, paid }
 };
@@ -249,7 +248,6 @@ async function pullStateFromCloud() {
       renderIncomes();
       renderBillAccountOptions();
       renderBillOwnerOptions();
-      renderIncomeSummary();
       renderBills();
       renderFlow();
       renderResult();
@@ -285,7 +283,6 @@ function subscribeToCloudUpdates() {
         renderIncomes();
         renderBillAccountOptions();
         renderBillOwnerOptions();
-        renderIncomeSummary();
         renderBills();
         renderFlow();
         renderResult();
@@ -358,8 +355,6 @@ function monthlyNetForIncome(inc) {
    Persistence: save / load / apply
    --------------------------- */
 function save() {
-  const baselineEl = document.getElementById("baseline-val");
-  if (baselineEl) state.baseline = parseFloat(baselineEl.value) || 0;
   try {
     localStorage.setItem("hb-state5", JSON.stringify(state));
   } catch (e) {
@@ -369,7 +364,6 @@ function save() {
   renderIncomes();
   renderBillAccountOptions();
   renderBillOwnerOptions();
-  renderIncomeSummary();
   renderBills();
   renderFlow();
   renderResult();
@@ -394,7 +388,6 @@ function load() {
   renderIncomes();
   renderBillAccountOptions();
   renderBillOwnerOptions();
-  renderIncomeSummary();
   renderBills();
   renderFlow();
   renderResult();
@@ -410,8 +403,7 @@ function load() {
    Apply state to simple inputs
    --------------------------- */
 function applyState() {
-  const baselineEl = document.getElementById("baseline-val");
-  if (baselineEl) baselineEl.value = state.baseline || 0;
+  // no simple top-level inputs left to sync
 }
 
 /* ---------------------------
@@ -770,30 +762,7 @@ function renderIncomes() {
     `).join("");
 }
 
-/* ---------------------------
-   Income summary
-   --------------------------- */
-function renderIncomeSummary() {
-  const grid = document.getElementById("income-summary");
-  if (!grid) return;
 
-  const totals = state.incomes.map(i => ({
-    name: i.name,
-    monthlyNet: monthlyNetForIncome(i)
-  }));
-
-  const combined = totals.reduce((s, t) => s + t.monthlyNet, 0);
-  const baseline = state.baseline || 0;
-
-  let html = "";
-  totals.forEach(t => {
-    html += `<div class="metric"><div class="metric-label">${escapeHtml(t.name)} monthly net</div><div class="metric-value">${currency.format(t.monthlyNet)}</div></div>`;
-  });
-  html += `<div class="metric"><div class="metric-label">Combined monthly net</div><div class="metric-value">${currency.format(combined)}</div></div>`;
-  html += `<div class="metric"><div class="metric-label">Starting balance</div><div class="metric-value">${currency.format(baseline)}</div></div>`;
-
-  grid.innerHTML = html;
-}
 
 /* ---------------------------
    Bill account & owner selects
@@ -1366,8 +1335,6 @@ function importData(file) {
       if (!Array.isArray(parsed.incomes)) parsed.incomes = [];
       if (!Array.isArray(parsed.bills)) parsed.bills = [];
 
-      parsed.baseline = Number(parsed.baseline) || 0;
-
       parsed.incomes = parsed.incomes.map(i => ({
         id: i.id || (Date.now() + Math.floor(Math.random() * 1000)),
         name: String(i.name || "Income"),
@@ -1388,7 +1355,6 @@ function importData(file) {
       }));
 
       state = Object.assign({}, state, {
-        baseline: parsed.baseline,
         incomes: parsed.incomes,
         bills: parsed.bills
       });
@@ -1398,7 +1364,6 @@ function importData(file) {
       renderIncomes();
       renderBillAccountOptions();
       renderBillOwnerOptions();
-      renderIncomeSummary();
       renderBills();
       renderFlow();
       renderResult();
