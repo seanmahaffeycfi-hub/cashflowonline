@@ -1067,6 +1067,18 @@ function renderBills() {
    Flow controls: month/year selectors
    - Renders into #flow-controls or inserts above #flow-section / #tab-flow
    --------------------------- */
+function accountTotalsUnpaid() {
+  const totals = {};
+  ACCOUNTS.forEach(a => totals[a] = 0);
+  state.bills.forEach(b => {
+    if (!b.paid) {
+      const acct = ACCOUNTS.includes(b.account) ? b.account : ACCOUNTS[0];
+      totals[acct] += Math.abs(Number(b.amt) || 0);
+    }
+  });
+  return totals;
+}
+
 function renderFlowControls() {
   let container = document.getElementById("flow-controls");
   if (!container) {
@@ -1083,6 +1095,8 @@ function renderFlowControls() {
       document.body.insertBefore(container, document.body.firstChild);
     }
   }
+  container.style.justifyContent = "space-between";
+  container.style.alignItems = "center";
 
   // Build month select
   const monthNames = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
@@ -1114,14 +1128,33 @@ function renderFlowControls() {
   }
 
   container.innerHTML = "";
+
+  const leftGroup = document.createElement("div");
+  leftGroup.style.display = "flex";
+  leftGroup.style.alignItems = "center";
   const label = document.createElement("div");
   label.style.display = "inline-block";
   label.style.marginRight = "8px";
   label.style.alignSelf = "center";
   label.textContent = "Flow month:";
-  container.appendChild(label);
-  container.appendChild(monthSel);
-  container.appendChild(yearSel);
+  leftGroup.appendChild(label);
+  leftGroup.appendChild(monthSel);
+  leftGroup.appendChild(yearSel);
+  container.appendChild(leftGroup);
+
+  // Per-account totals (unpaid bills), updates as Paid checkboxes are toggled
+  const totals = accountTotalsUnpaid();
+  const totalsGroup = document.createElement("div");
+  totalsGroup.id = "flow-account-totals";
+  totalsGroup.style.display = "flex";
+  totalsGroup.style.gap = "14px";
+  totalsGroup.style.alignItems = "center";
+  ACCOUNTS.forEach(a => {
+    const span = document.createElement("div");
+    span.innerHTML = `<span style="color:#777; font-size:13px;">${escapeHtml(a)}:</span> <strong>${currency.format(totals[a])}</strong>`;
+    totalsGroup.appendChild(span);
+  });
+  container.appendChild(totalsGroup);
 
   monthSel.onchange = () => {
     flowSelectedMonth = parseInt(monthSel.value, 10);
@@ -1157,9 +1190,8 @@ function renderFlow() {
           <th>In</th>
           <th>Out</th>
           ${ACCOUNTS.map(a => `<th>${escapeHtml(a)} (bills)</th>`).join("")}
-          <th>Owner</th>
           <th>Paid</th>
-          <th></th>
+          <th>Owner</th>
         </tr>
       `;
     }
@@ -1248,13 +1280,12 @@ function renderFlow() {
       return `
         <tr>
           <td>${e.day === null ? "-" : e.day}</td>
-          <td>${escapeHtml(e.label)}</td>
+          <td>${escapeHtml(e.label)}<br><button class="btn btn-secondary" onclick="editIncome(${e.sourceId})">Edit</button></td>
           <td class="amt-in">${currency.format(e.amount)}</td>
           <td></td>
           ${acctCells}
+          <td></td>
           <td>${escapeHtml(e.owner || "")}</td>
-          <td></td>
-          <td></td>
         </tr>
       `;
     } else {
@@ -1264,19 +1295,18 @@ function renderFlow() {
       return `
         <tr>
           <td>${e.day}</td>
-          <td>${escapeHtml(e.label)}</td>
+          <td>${escapeHtml(e.label)}<br><button class="btn btn-secondary" onclick="editBill(${e.sourceId})">Edit</button> <button class="btn btn-danger" onclick="deleteBill(${e.sourceId})">X</button></td>
           <td></td>
           <td class="amt-out">-${currency.format(Math.abs(e.amount))}</td>
           ${acctCells}
-          <td>${escapeHtml(e.owner || "")}</td>
           <td style="text-align:center">${checkbox}</td>
-          <td><button class="btn btn-secondary" onclick="editBill(${e.sourceId})">Edit</button> <button class="btn btn-danger" onclick="deleteBill(${e.sourceId})">X</button></td>
+          <td>${escapeHtml(e.owner || "")}</td>
         </tr>
       `;
     }
   }).join("");
 
-  flowBody.innerHTML = rows || "<tr><td colspan='" + (4 + ACCOUNTS.length) + "'>No flow events for selected month.</td></tr>";
+  flowBody.innerHTML = rows || "<tr><td colspan='" + (6 + ACCOUNTS.length) + "'>No flow events for selected month.</td></tr>";
 }
 
 /* ---------------------------
