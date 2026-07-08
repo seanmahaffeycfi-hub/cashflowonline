@@ -755,8 +755,8 @@ function renderIncomes() {
         <td>${escapeHtml(i.nextpay || "-")}</td>
         <td>${escapeHtml(String(i.tax || 0))}%</td>
         <td>
-          <button class="btn btn-secondary" onclick="editIncome(${i.id})">Edit</button>
-          <button class="btn btn-danger" onclick="deleteIncome(${i.id})">Delete</button>
+          <button class="link-btn edit" onclick="editIncome(${i.id})">Edit</button>
+          <button class="link-btn delete" onclick="deleteIncome(${i.id})">Delete</button>
         </td>
       </tr>
     `).join("");
@@ -1025,7 +1025,7 @@ function renderBills() {
           <td></td>
           <td>${escapeHtml(i.name)}</td>
           <td>
-            <button class="btn btn-secondary" onclick="editIncome(${i.id})">Edit</button>
+            <button class="link-btn edit" onclick="editIncome(${i.id})">Edit</button>
           </td>
         </tr>
       `;
@@ -1053,8 +1053,8 @@ function renderBills() {
           <td>${accountCol}</td>
           <td>${ownerCol}</td>
           <td>
-            <button class="btn btn-secondary" onclick="editBill(${b.id})">Edit</button>
-            <button class="btn btn-danger" onclick="deleteBill(${b.id})">X</button>
+            <button class="link-btn edit" onclick="editBill(${b.id})">Edit</button>
+            <button class="link-btn delete" onclick="deleteBill(${b.id})">Delete</button>
           </td>
         </tr>
       `;
@@ -1287,7 +1287,7 @@ function renderFlow() {
           <td></td>
           ${acctCells}
           <td></td>
-          <td><button class="btn btn-secondary" onclick="editIncome(${e.sourceId})">Edit</button></td>
+          <td><button class="link-btn edit" onclick="editIncome(${e.sourceId})">Edit</button></td>
         </tr>
       `;
     } else {
@@ -1303,7 +1303,7 @@ function renderFlow() {
           <td class="amt-out">-${currency.format(Math.abs(e.amount))}</td>
           ${acctCells}
           <td style="text-align:center">${checkbox}</td>
-          <td><button class="btn btn-secondary" onclick="editBill(${e.sourceId})">Edit</button> <button class="btn btn-danger" onclick="deleteBill(${e.sourceId})">X</button></td>
+          <td><button class="link-btn edit" onclick="editBill(${e.sourceId})">Edit</button> <button class="link-btn delete" onclick="deleteBill(${e.sourceId})">Delete</button></td>
         </tr>
       `;
     }

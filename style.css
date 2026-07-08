@@ -38,3 +38,9 @@ th.sortable:hover { color: #0a5 }
 
 /* slightly narrower action button column */
 table td .btn { padding: 6px 8px; font-size: 13px; }
+
+/* lightweight text-link style for row-level Edit/Delete actions */
+.link-btn { background: none; border: none; padding: 0; margin: 0; font-size: 13px; cursor: pointer; text-decoration: underline; }
+.link-btn.edit { color: #0a5; }
+.link-btn.delete { color: #c33; }
+.link-btn + .link-btn { margin-left: 10px; }
