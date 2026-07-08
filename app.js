@@ -1185,13 +1185,14 @@ function renderFlow() {
     if (thead) {
       thead.innerHTML = `
         <tr>
+          <th>Owner</th>
           <th>Day</th>
           <th>Event</th>
           <th>In</th>
           <th>Out</th>
           ${ACCOUNTS.map(a => `<th>${escapeHtml(a)} (bills)</th>`).join("")}
           <th>Paid</th>
-          <th>Owner</th>
+          <th></th>
         </tr>
       `;
     }
@@ -1279,13 +1280,14 @@ function renderFlow() {
     if (e.type === "in") {
       return `
         <tr>
+          <td>${escapeHtml(e.owner || "")}</td>
           <td>${e.day === null ? "-" : e.day}</td>
-          <td>${escapeHtml(e.label)}<br><button class="btn btn-secondary" onclick="editIncome(${e.sourceId})">Edit</button></td>
+          <td>${escapeHtml(e.label)}</td>
           <td class="amt-in">${currency.format(e.amount)}</td>
           <td></td>
           ${acctCells}
           <td></td>
-          <td>${escapeHtml(e.owner || "")}</td>
+          <td><button class="btn btn-secondary" onclick="editIncome(${e.sourceId})">Edit</button></td>
         </tr>
       `;
     } else {
@@ -1294,13 +1296,14 @@ function renderFlow() {
       const checkbox = `<input type="checkbox" ${isPaid ? "checked" : ""} onchange="togglePaid(${e.sourceId}, this.checked)" aria-label="Mark bill paid">`;
       return `
         <tr>
+          <td>${escapeHtml(e.owner || "")}</td>
           <td>${e.day}</td>
-          <td>${escapeHtml(e.label)}<br><button class="btn btn-secondary" onclick="editBill(${e.sourceId})">Edit</button> <button class="btn btn-danger" onclick="deleteBill(${e.sourceId})">X</button></td>
+          <td>${escapeHtml(e.label)}</td>
           <td></td>
           <td class="amt-out">-${currency.format(Math.abs(e.amount))}</td>
           ${acctCells}
           <td style="text-align:center">${checkbox}</td>
-          <td>${escapeHtml(e.owner || "")}</td>
+          <td><button class="btn btn-secondary" onclick="editBill(${e.sourceId})">Edit</button> <button class="btn btn-danger" onclick="deleteBill(${e.sourceId})">X</button></td>
         </tr>
       `;
     }
