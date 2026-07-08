@@ -1297,19 +1297,42 @@ function assignedByOwner(ownerName) {
     .reduce((s, b) => s + (Number(b.amt) || 0), 0);
 }
 
+// Net pay actually landing in the given month for this income, based on
+// real pay dates (accounts for months with an extra biweekly check, etc).
+// Falls back to the flat monthly average if no next-pay date is set yet.
+function monthlyNetForIncomeInMonth(inc, year, month) {
+  if (!inc.nextpay) return monthlyNetForIncome(inc);
+  const payDates = getPayDatesForMonth(inc, year, month);
+  const perCheckNet = (inc.income || 0) * (1 - ((inc.tax || 0) / 100));
+  return payDates.length * perCheckNet;
+}
+
+const MONTH_NAMES = ["January","February","March","April","May","June","July","August","September","October","November","December"];
+
 function renderResult() {
-  const incomesMonthly = state.incomes.map(i => ({ name: i.name, monthlyNet: monthlyNetForIncome(i) }));
+  const now = new Date();
+  const year = now.getFullYear();
+  const month = now.getMonth(); // 0-based
+  const lastDay = new Date(year, month + 1, 0).getDate();
+
+  const labelEl = document.getElementById("result-month-label");
+  if (labelEl) labelEl.textContent = `Results for ${MONTH_NAMES[month]} ${year}`;
+
+  const incomesMonthly = state.incomes.map(i => ({
+    name: i.name,
+    monthlyNet: monthlyNetForIncomeInMonth(i, year, month)
+  }));
 
   let html = "";
   incomesMonthly.forEach(im => {
     const assigned = assignedByOwner(im.name); // sum by owner, ignore account and paid
-    html += `<div class="metric"><div class="metric-label">${escapeHtml(im.name)} monthly net</div><div class="metric-value">${currency.format(im.monthlyNet)}</div></div>`;
+    html += `<div class="metric"><div class="metric-label">${escapeHtml(im.name)} net this month</div><div class="metric-value">${currency.format(im.monthlyNet)}</div></div>`;
     html += `<div class="metric"><div class="metric-label">${escapeHtml(im.name)} assigned bills</div><div class="metric-value">${currency.format(assigned)}</div></div>`;
     html += `<div class="metric"><div class="metric-label">${escapeHtml(im.name)} remaining</div><div class="metric-value">${currency.format(im.monthlyNet - assigned)}</div></div>`;
   });
 
-  const first15 = billsInRange(1,15);
-  const lastHalf = billsInRange(16,31);
+  const first15 = billsInRange(1, 15);
+  const lastHalf = billsInRange(16, lastDay);
   html += `<div class="metric"><div class="metric-label">Bills 1-15 (unpaid)</div><div class="metric-value">${currency.format(first15)}</div></div>`;
   html += `<div class="metric"><div class="metric-label">Bills 16-EOM (unpaid)</div><div class="metric-value">${currency.format(lastHalf)}</div></div>`;
 
