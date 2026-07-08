@@ -21,6 +21,10 @@ input, select { height: 34px; padding: 0 8px; border: 1px solid #ccc; border-rad
 .metric-label { font-size: 13px; color: #777 }
 .metric-value { font-size: 21px; font-weight: 600 }
 
+.metric-list { display: flex; flex-direction: column; gap: 8px; margin-top: 16px }
+.metric-list .metric { display: flex; align-items: center; justify-content: space-between; gap: 12px }
+.metric-list .metric-label { margin-bottom: 0 }
+
 table { width: 100%; border-collapse: collapse; font-size: 14px }
 th, td { padding: 6px 7px; border-bottom: 1px solid #ddd }
 th { text-align: left; color: #555; font-size: 13px }

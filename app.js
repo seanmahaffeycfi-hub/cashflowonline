@@ -1281,15 +1281,9 @@ function renderFlow() {
 
 /* ---------------------------
    Result tab
-   - Assigned bills now sum by owner (regardless of account)
-   - Paid checkbox does not affect assigned totals
+   - Assigned bills sum by owner (regardless of account, ignores paid status)
+   - Cycle months to forecast future/past months
    --------------------------- */
-function billsInRange(start, end) {
-  return state.bills
-    .filter(b => b.due >= start && b.due <= end && !b.paid)
-    .reduce((s, b) => s + b.amt, 0);
-}
-
 function assignedByOwner(ownerName) {
   // Sum all bills assigned to ownerName regardless of account and regardless of paid status
   return state.bills
@@ -1309,32 +1303,52 @@ function monthlyNetForIncomeInMonth(inc, year, month) {
 
 const MONTH_NAMES = ["January","February","March","April","May","June","July","August","September","October","November","December"];
 
+// Result tab's selected month/year, independently cyclable from Cash Flow's
+let resultSelectedYear = (new Date()).getFullYear();
+let resultSelectedMonth = (new Date()).getMonth(); // 0-based
+
+function changeResultMonth(delta) {
+  resultSelectedMonth += delta;
+  if (resultSelectedMonth < 0) { resultSelectedMonth = 11; resultSelectedYear--; }
+  if (resultSelectedMonth > 11) { resultSelectedMonth = 0; resultSelectedYear++; }
+  renderResult();
+}
+
+// Wrap a currency value in red when negative, default color otherwise
+function formatSigned(value) {
+  const cls = value < 0 ? "amt-out" : "";
+  return `<span class="${cls}">${currency.format(value)}</span>`;
+}
+
 function renderResult() {
-  const now = new Date();
-  const year = now.getFullYear();
-  const month = now.getMonth(); // 0-based
-  const lastDay = new Date(year, month + 1, 0).getDate();
+  const year = resultSelectedYear;
+  const month = resultSelectedMonth;
+
+  const today = new Date();
+  const isCurrent = (year === today.getFullYear() && month === today.getMonth());
 
   const labelEl = document.getElementById("result-month-label");
-  if (labelEl) labelEl.textContent = `Results for ${MONTH_NAMES[month]} ${year}`;
+  if (labelEl) {
+    labelEl.textContent = `Results for ${MONTH_NAMES[month]} ${year}` + (isCurrent ? " (current)" : " (forecast)");
+  }
 
   const incomesMonthly = state.incomes.map(i => ({
     name: i.name,
     monthlyNet: monthlyNetForIncomeInMonth(i, year, month)
   }));
 
+  const totalAssigned = incomesMonthly.reduce((s, im) => s + assignedByOwner(im.name), 0);
+
   let html = "";
   incomesMonthly.forEach(im => {
     const assigned = assignedByOwner(im.name); // sum by owner, ignore account and paid
-    html += `<div class="metric"><div class="metric-label">${escapeHtml(im.name)} net this month</div><div class="metric-value">${currency.format(im.monthlyNet)}</div></div>`;
-    html += `<div class="metric"><div class="metric-label">${escapeHtml(im.name)} assigned bills</div><div class="metric-value">${currency.format(assigned)}</div></div>`;
-    html += `<div class="metric"><div class="metric-label">${escapeHtml(im.name)} remaining</div><div class="metric-value">${currency.format(im.monthlyNet - assigned)}</div></div>`;
+    const remaining = im.monthlyNet - assigned;
+    const share = totalAssigned > 0 ? (assigned / totalAssigned) * 100 : 0;
+    html += `<div class="metric"><div class="metric-label">${escapeHtml(im.name)} net this month</div><div class="metric-value">${formatSigned(im.monthlyNet)}</div></div>`;
+    html += `<div class="metric"><div class="metric-label">${escapeHtml(im.name)} assigned bills</div><div class="metric-value">${formatSigned(assigned)}</div></div>`;
+    html += `<div class="metric"><div class="metric-label">${escapeHtml(im.name)} remaining</div><div class="metric-value">${formatSigned(remaining)}</div></div>`;
+    html += `<div class="metric"><div class="metric-label">${escapeHtml(im.name)} share of bills</div><div class="metric-value">${share.toFixed(0)}%</div></div>`;
   });
-
-  const first15 = billsInRange(1, 15);
-  const lastHalf = billsInRange(16, lastDay);
-  html += `<div class="metric"><div class="metric-label">Bills 1-15 (unpaid)</div><div class="metric-value">${currency.format(first15)}</div></div>`;
-  html += `<div class="metric"><div class="metric-label">Bills 16-EOM (unpaid)</div><div class="metric-value">${currency.format(lastHalf)}</div></div>`;
 
   const el = document.getElementById("result-summary");
   if (el) el.innerHTML = html;
