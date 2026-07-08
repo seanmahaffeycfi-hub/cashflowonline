@@ -25,6 +25,9 @@ table { width: 100%; border-collapse: collapse; font-size: 14px }
 th, td { padding: 6px 7px; border-bottom: 1px solid #ddd }
 th { text-align: left; color: #555; font-size: 13px }
 
+th.sortable { cursor: pointer; user-select: none }
+th.sortable:hover { color: #0a5 }
+
 /* color amounts: in = green, out = red */
 .amt-in { color: #0a5; font-weight: 600; }
 .amt-out { color: #c33; font-weight: 600; }
