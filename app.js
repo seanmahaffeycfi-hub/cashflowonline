@@ -926,6 +926,52 @@ function getPayDatesForMonth(inc, year, month) {
    Bills tab: renderBills (updated column labels & mapping)
    - New header: Item | Amount | Day | Account | Owner | Actions
    --------------------------- */
+/* ---------------------------
+   Bills tab sorting
+   - Incomes and bills are sorted independently by the same
+     clicked column, but always rendered as two grouped blocks
+     (incomes first, then bills).
+   --------------------------- */
+let billsSortColumn = "day"; // item | amount | day | account | owner
+let billsSortDir = "asc"; // asc | desc
+
+function sortBillsBy(col) {
+  if (billsSortColumn === col) {
+    billsSortDir = billsSortDir === "asc" ? "desc" : "asc";
+  } else {
+    billsSortColumn = col;
+    billsSortDir = "asc";
+  }
+  renderBills();
+}
+
+function billsSortIndicator(col) {
+  if (billsSortColumn !== col) return "";
+  return billsSortDir === "asc" ? " \u25B2" : " \u25BC";
+}
+
+function incomeSortValue(i, col) {
+  switch (col) {
+    case "item": return (i.name || "").toLowerCase();
+    case "amount": return Number(i.income) || 0;
+    case "day": return i.nextpay || "";
+    case "account": return ""; // incomes have no account column
+    case "owner": return (i.name || "").toLowerCase();
+    default: return "";
+  }
+}
+
+function billSortValue(b, col) {
+  switch (col) {
+    case "item": return (b.name || "").toLowerCase();
+    case "amount": return Number(b.amt) || 0;
+    case "day": return Number(b.due) || 0;
+    case "account": return (b.account || "").toLowerCase();
+    case "owner": return (b.owner || "Shared").toLowerCase();
+    default: return "";
+  }
+}
+
 function renderBills() {
   const tbody = document.getElementById("bills-body");
   if (!tbody) return;
@@ -937,11 +983,11 @@ function renderBills() {
     if (thead) {
       thead.innerHTML = `
         <tr>
-          <th>Item</th>
-          <th>Amount</th>
-          <th>Day</th>
-          <th>Account</th>
-          <th>Owner</th>
+          <th class="sortable" onclick="sortBillsBy('item')">Item${billsSortIndicator('item')}</th>
+          <th class="sortable" onclick="sortBillsBy('amount')">Amount${billsSortIndicator('amount')}</th>
+          <th class="sortable" onclick="sortBillsBy('day')">Day${billsSortIndicator('day')}</th>
+          <th class="sortable" onclick="sortBillsBy('account')">Account${billsSortIndicator('account')}</th>
+          <th class="sortable" onclick="sortBillsBy('owner')">Owner${billsSortIndicator('owner')}</th>
           <th></th>
         </tr>
       `;
@@ -954,10 +1000,20 @@ function renderBills() {
     return;
   }
 
-  // Build rows: show incomes first (as Amount rows) then bills
+  // Build rows: show incomes first (as Amount rows) then bills.
+  // Each group is sorted independently by the active column so the
+  // two groups stay together instead of interleaving.
+  const dirMult = billsSortDir === "asc" ? 1 : -1;
+
   const incomeRows = state.incomes
     .slice()
-    .sort((a,b) => a.name.localeCompare(b.name))
+    .sort((a, b) => {
+      const av = incomeSortValue(a, billsSortColumn);
+      const bv = incomeSortValue(b, billsSortColumn);
+      if (av < bv) return -1 * dirMult;
+      if (av > bv) return 1 * dirMult;
+      return a.name.localeCompare(b.name);
+    })
     .map(i => {
       const amount = currency.format(i.income);
       const day = i.nextpay ? escapeHtml(i.nextpay) : "-";
@@ -977,7 +1033,13 @@ function renderBills() {
 
   const billRows = state.bills
     .slice()
-    .sort((a,b) => a.due - b.due || a.name.localeCompare(b.name))
+    .sort((a, b) => {
+      const av = billSortValue(a, billsSortColumn);
+      const bv = billSortValue(b, billsSortColumn);
+      if (av < bv) return -1 * dirMult;
+      if (av > bv) return 1 * dirMult;
+      return a.name.localeCompare(b.name);
+    })
     .map(b => {
       const amt = currency.format(b.amt);
       const day = escapeHtml(String(b.due));
